@@ -33,7 +33,7 @@ async function seed() {
     await User.findOneAndUpdate(
       { email: dev.email },
       { name: dev.name, email: dev.email, passwordHash, role: dev.role, isActive: true },
-      { upsert: true, new: true },
+      { upsert: true, returnDocument: 'after' },
     )
 
     console.log(`Seeded ${dev.role.toLowerCase()}: ${dev.email}`)
