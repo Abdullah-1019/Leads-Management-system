@@ -42,7 +42,7 @@ export function CalendarPage() {
   const { data, isLoading, isError, refetch } = useInterviewsQuery({
     startDate: toDateInput(rangeStart),
     endDate: toDateInput(rangeEnd),
-    limit: 200,
+    limit: 100,
   })
 
   const grouped = useMemo(() => groupByDay(data?.data ?? []), [data])
