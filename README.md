@@ -107,6 +107,58 @@ values) are tracked in git.
 
 ## Deployment
 
-Target setup: frontend on Vercel, backend on Render/Railway, database on MongoDB Atlas. See
-`docs/PRD.md` §30 for the full phased build plan — step-by-step deployment instructions land
-here as that phase is completed.
+Target setup: frontend on **Vercel**, backend on **Render** (or Railway), database on
+**MongoDB Atlas**. Deploy the backend first — the frontend needs its live URL.
+
+### 1. MongoDB Atlas
+
+Already in use during development. For production:
+
+- Confirm **Network Access** allows connections from your backend host. Render's free tier
+  doesn't have a fixed outbound IP, so the simplest option is allowing `0.0.0.0/0` (any IP) —
+  acceptable here since the connection is still authenticated (username/password) and this is
+  a small internal tool; a paid Render plan with a static outbound IP lets you scope this down
+  instead.
+- Use a dedicated database user for production, not a personal/admin Atlas login.
+
+### 2. Backend — Render
+
+1. New **Web Service** → connect this repo.
+2. **Root Directory**: `server`
+3. **Build Command**: `npm install && npm run build`
+4. **Start Command**: `npm start`
+5. Add environment variables (Render dashboard → Environment):
+
+   | Variable | Value |
+   |---|---|
+   | `MONGODB_URI` | your Atlas connection string |
+   | `JWT_SECRET` | a long random string (different from any dev value) |
+   | `CORS_ORIGIN` | your Vercel URL, e.g. `https://your-app.vercel.app` — update after step 3 |
+   | `PORT` | Render sets this automatically; leave unset or match Render's provided value |
+
+6. Deploy, then note the resulting service URL (e.g. `https://company-crm-api.onrender.com`) —
+   the frontend needs it next. Confirm `GET /api/health` responds on that URL.
+7. Run the seed script once against production (locally, with `MONGODB_URI` pointed at Atlas):
+   `cd server && npm run seed` — then **change the three dev passwords immediately** through
+   the app; they're only meant as temporary placeholders.
+
+### 3. Frontend — Vercel
+
+1. New Project → import this repo.
+2. **Root Directory**: `client` (Vercel auto-detects the Vite framework preset from there;
+   `client/vercel.json` adds the SPA rewrite so client-side routes like `/applications/:id`
+   don't 404 on a direct load/refresh).
+3. Environment variable:
+
+   | Variable | Value |
+   |---|---|
+   | `VITE_API_URL` | the Render backend URL from step 2.6 |
+
+4. Deploy, then note the resulting URL (e.g. `https://your-app.vercel.app`).
+
+### 4. Close the loop
+
+Go back to Render and set `CORS_ORIGIN` to the real Vercel URL from step 3 (comma-separate
+multiple origins if you need both a production and a preview domain), then redeploy the
+backend so the new CORS setting takes effect. Log in from the deployed frontend to confirm
+end-to-end connectivity.
